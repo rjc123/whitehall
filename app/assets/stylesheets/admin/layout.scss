@@ -1,7 +1,14 @@
+html {
+  // Required to set the css `rem` sise for the font stacks currently used 
+  // in document-preview.
+  font-size: 62.5%;
+}
+
 body {
   padding-top: 100px;
   padding-bottom: 40px;
 }
+
 .sidebar-nav {
   padding: 9px 0;
 }
