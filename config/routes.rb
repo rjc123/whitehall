@@ -136,7 +136,9 @@ Whitehall::Application.routes.draw do
         resources :document_series, only: [:index]
         resources :organisations do
           resources :groups, except: [:show]
-          resources :document_series, except: [:index]
+          resources :document_series, except: [:index] do
+            get :documents, on: :member
+          end
           resources :corporate_information_pages do
             resources :translations, controller: 'corporate_information_pages_translations'
           end

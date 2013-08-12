@@ -1,0 +1,16 @@
+<% page_title "#{@document_series.name}", "Document series" %>
+
+<p><%= link_to "Back to #{@document_series.organisation.name}", document_series_admin_organisation_path(@document_series.organisation) %></p>
+<h1><%= @document_series.name %></h1>
+<p><%= link_to "View on public site", organisation_document_series_path(@document_series.organisation, @document_series) %></p>
+
+<%= document_series_tab_navigation(@document_series.organisation, @document_series) do %>
+
+  <ol>
+    <% @document_series.editions.each do |edition| %>
+      <%= content_tag_for(:li, edition, class: "well") do %>
+        <span class="title"><%= link_to edition.title, admin_edition_path(edition) %></span>
+      <% end %>
+    <% end %>
+  </ol>
+<% end %>
