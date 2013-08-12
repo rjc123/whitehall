@@ -8,7 +8,7 @@ class BulkUpload
 
   validate :attachments_are_valid?
 
-  attr_accessor :attachments
+  attr_reader :attachments
 
   def self.from_files(file_paths)
     attachment_params = file_paths.map do |file|

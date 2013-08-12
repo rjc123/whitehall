@@ -7,16 +7,23 @@ class BulkUploadTest < ActiveSupport::TestCase
     File.open(File.join(Rails.root, 'test', 'fixtures', filename))
   end
 
-  def valid_attachments
-    [ build(:attachment), build(:attachment) ]
+  def valid_attachment_params
+    {
+      attachments: [
+        attributes_for(:attachment),
+        attributes_for(:attachment)
+      ]
+    }
   end
 
-  def invalid_attachments
-    [ build(:attachment, title: ''), build(:attachment) ]
+  def invalid_attachment_params
+    valid_attachment_params.tap do |params|
+      params[:attachments].first[:title] = ''
+    end
   end
 
   test "can be instantiated from an array of file paths" do
-    files = [ fixture_file('greenpaper.pdf'), fixture_file('whitepaper.pdf') ]
+    files = [fixture_file('greenpaper.pdf'), fixture_file('whitepaper.pdf')]
 
     attachments = BulkUpload.from_files(files)
 
@@ -27,9 +34,7 @@ class BulkUploadTest < ActiveSupport::TestCase
 
   test '#save_attachments_to_edition saves attachments to the edition' do
     edition = create(:news_article)
-    bulk_upload = BulkUpload.new
-    bulk_upload.attachments = valid_attachments
-
+    bulk_upload = BulkUpload.new(valid_attachment_params)
     assert_difference('edition.attachments.count', 2) do
       assert bulk_upload.save_attachments_to_edition(edition), 'should return true'
     end
@@ -37,9 +42,7 @@ class BulkUploadTest < ActiveSupport::TestCase
 
   test '#save_attachments_to_edition does not save attachments if they are invalid' do
     edition = create(:news_article)
-    bulk_upload = BulkUpload.new
-    bulk_upload.attachments = invalid_attachments
-
+    bulk_upload = BulkUpload.new(invalid_attachment_params)
     assert_no_difference('edition.attachments.count') do
       refute bulk_upload.save_attachments_to_edition(edition), 'should return false'
     end
@@ -47,10 +50,8 @@ class BulkUploadTest < ActiveSupport::TestCase
 
   test '#save_attachments_to_edition adds errors when attachments are invalid' do
     edition = create(:news_article)
-    bulk_upload = BulkUpload.new
-    bulk_upload.attachments = invalid_attachments
+    bulk_upload = BulkUpload.new(invalid_attachment_params)
     bulk_upload.save_attachments_to_edition(edition)
-
     assert bulk_upload.errors[:base].any?
   end
 end
@@ -115,7 +116,7 @@ class BulkUploadZipFileTest < ActiveSupport::TestCase
   def superficial_zip_file
     ActionDispatch::Http::UploadedFile.new(
       filename: 'greenpaper-not-a-zip.zip',
-      tempfile: File.open(Rails.root.join('test','fixtures','greenpaper.pdf'))
+      tempfile: File.open(Rails.root.join('test', 'fixtures', 'greenpaper.pdf'))
     )
   end
 
