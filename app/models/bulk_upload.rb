@@ -10,16 +10,25 @@ class BulkUpload
 
   attr_reader :attachments
 
-  def self.from_files(file_paths)
+  def self.from_files(edition, file_paths)
     attachment_params = file_paths.map do |file|
       { attachment_data_attributes: { file: File.open(file) } }
     end
 
-    new(attachments: attachment_params)
+    new(edition, attachments: attachment_params)
   end
 
-  def initialize(params={})
-    @attachments = params.fetch(:attachments, []).map {|p| Attachment.new(p) }
+  def initialize(edition, params = {})
+    @edition = edition
+    @attachments = params.fetch(:attachments, []).map do |attachment_params|
+      file = attachment_params.fetch(:attachment_data_attributes, {})[:file]
+      attachment = if file
+        scope = edition.attachments.with_filename(File.basename(file))
+        scope.first_or_initialize(attachment_params)
+      else
+        Attachment.new(attachment_params)
+      end
+    end
   end
 
   def to_model
@@ -30,9 +39,9 @@ class BulkUpload
     false
   end
 
-  def save_attachments_to_edition(edition)
+  def save_attachments_to_edition
     if valid?
-      edition.attachments << attachments
+      @edition.attachments << attachments
     else
       false
     end

@@ -1,6 +1,5 @@
 require 'test_helper'
 
-
 class BulkUploadTest < ActiveSupport::TestCase
 
   def fixture_file(filename)
@@ -22,36 +21,57 @@ class BulkUploadTest < ActiveSupport::TestCase
     end
   end
 
-  test "can be instantiated from an array of file paths" do
+  test 'can be instantiated from an array of file paths' do
     files = [fixture_file('greenpaper.pdf'), fixture_file('whitepaper.pdf')]
 
-    attachments = BulkUpload.from_files(files)
+    attachments = BulkUpload.from_files(create(:news_article), files)
 
     assert_equal 2, attachments.attachments.size
     assert_equal 'greenpaper.pdf', attachments.attachments[0].filename
     assert_equal 'whitepaper.pdf', attachments.attachments[1].filename
   end
 
+  test 'loads attachments from the edition if filenames match' do
+    edition = create(:news_article)
+    edition.attachments << build(:attachment)
+    existing_filename = edition.attachments.first.filename
+    attachment_params = {
+      attachments: [
+        {
+          title: 'New attachment',
+          attachment_data_attributes: { file: fixture_file('whitepaper.pdf') }
+        },
+        {
+          title: 'New title for existing attachment',
+          attachment_data_attributes: { file: fixture_file(existing_filename) }
+        }
+      ]
+    }
+    attachments = BulkUpload.new(edition, attachment_params).attachments
+    assert attachments.first.new_record?, 'should be new record'
+    refute attachments.last.new_record?, "shouldn't be new record"
+  end
+
   test '#save_attachments_to_edition saves attachments to the edition' do
     edition = create(:news_article)
-    bulk_upload = BulkUpload.new(valid_attachment_params)
+    bulk_upload = BulkUpload.new(edition, valid_attachment_params)
     assert_difference('edition.attachments.count', 2) do
-      assert bulk_upload.save_attachments_to_edition(edition), 'should return true'
+      assert bulk_upload.save_attachments_to_edition, 'should return true'
     end
   end
 
   test '#save_attachments_to_edition does not save attachments if they are invalid' do
     edition = create(:news_article)
-    bulk_upload = BulkUpload.new(invalid_attachment_params)
+    bulk_upload = BulkUpload.new(edition, invalid_attachment_params)
     assert_no_difference('edition.attachments.count') do
-      refute bulk_upload.save_attachments_to_edition(edition), 'should return false'
+      refute bulk_upload.save_attachments_to_edition, 'should return false'
     end
   end
 
   test '#save_attachments_to_edition adds errors when attachments are invalid' do
     edition = create(:news_article)
-    bulk_upload = BulkUpload.new(invalid_attachment_params)
-    bulk_upload.save_attachments_to_edition(edition)
+    bulk_upload = BulkUpload.new(edition, invalid_attachment_params)
+    bulk_upload.save_attachments_to_edition
     assert bulk_upload.errors[:base].any?
   end
 end
