@@ -11,24 +11,19 @@ class BulkUpload
   attr_reader :attachments
 
   def self.from_files(edition, file_paths)
-    attachment_params = file_paths.map do |file|
-      { attachment_data_attributes: { file: File.open(file) } }
+    params = {}
+    file_paths.each_with_index do |file, index|
+      params[index.to_s] = { attachment_data_attributes: { file: File.open(file) } }
     end
-
-    new(edition, attachments: attachment_params)
+    new(edition, attachments_attributes: params)
   end
 
-  def initialize(edition, params = {})
+  def initialize(edition, params)
     @edition = edition
-    @attachments = params.fetch(:attachments, []).map do |attachment_params|
-      file = attachment_params.fetch(:attachment_data_attributes, {})[:file]
-      attachment = if file
-        scope = edition.attachments.with_filename(File.basename(file))
-        scope.first_or_initialize(attachment_params)
-      else
-        Attachment.new(attachment_params)
-      end
-    end
+    @attachments = initialize_attachments(params[:attachments_attributes])
+  end
+
+  def attachments_attributes=(stuff)
   end
 
   def to_model
@@ -41,7 +36,9 @@ class BulkUpload
 
   def save_attachments_to_edition
     if valid?
-      @edition.attachments << attachments
+      attachments.each do |attachment|
+        EditionAttachment.create!(edition: @edition, attachment: attachment)
+      end
     else
       false
     end
@@ -49,8 +46,33 @@ class BulkUpload
 
   def attachments_are_valid?
     attachments.each { |attachment| attachment.valid? }
-    unless attachments.all? { |attachment| attachment.valid? }
+    if attachments.all? { |attachment| attachment.valid? }
+      true
+    else
       errors[:base] << 'Please enter missing fields for each attachment'
+      false
+    end
+  end
+
+  private
+
+  def existing_attachment_with_new_data(data_attributes)
+    attachment = nil
+    if file = data_attributes[:file]
+      attachment = @edition.attachments.with_filename(File.basename(file)).first
+      if attachment
+        data_attributes.merge!(to_replace_id: attachment.attachment_data.id)
+        attachment.attachment_data = AttachmentData.new(data_attributes)
+      end
+    end
+    attachment
+  end
+
+  def initialize_attachments(attachments_attributes_params)
+    @attachments ||= attachments_attributes_params.map do |index, attachment_params|
+      data_attributes = attachment_params.fetch(:attachment_data_attributes, {})
+      attachment = existing_attachment_with_new_data(data_attributes)
+      attachment || Attachment.new(attachment_params)
     end
   end
 

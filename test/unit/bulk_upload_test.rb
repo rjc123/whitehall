@@ -8,16 +8,16 @@ class BulkUploadTest < ActiveSupport::TestCase
 
   def valid_attachment_params
     {
-      attachments: [
-        attributes_for(:attachment),
-        attributes_for(:attachment)
-      ]
+      attachments_attributes: {
+        '0' => attributes_for(:attachment),
+        '1' => attributes_for(:attachment)
+      }
     }
   end
 
   def invalid_attachment_params
     valid_attachment_params.tap do |params|
-      params[:attachments].first[:title] = ''
+      params[:attachments_attributes]['0'][:title] = ''
     end
   end
 
@@ -31,25 +31,38 @@ class BulkUploadTest < ActiveSupport::TestCase
     assert_equal 'whitepaper.pdf', attachments.attachments[1].filename
   end
 
-  test 'loads attachments from the edition if filenames match' do
-    edition = create(:news_article)
-    edition.attachments << build(:attachment)
+  test '.new loads attachments from the edition if filenames match' do
+    edition = create(:news_article, :with_attachment)
     existing_filename = edition.attachments.first.filename
     attachment_params = {
-      attachments: [
-        {
+      attachments_attributes: {
+        '0' => {
           title: 'New attachment',
           attachment_data_attributes: { file: fixture_file('whitepaper.pdf') }
         },
-        {
+        '1' => {
           title: 'New title for existing attachment',
           attachment_data_attributes: { file: fixture_file(existing_filename) }
         }
-      ]
+      }
     }
     attachments = BulkUpload.new(edition, attachment_params).attachments
-    assert attachments.first.new_record?, 'should be new record'
-    refute attachments.last.new_record?, "shouldn't be new record"
+    assert attachments.first.new_record?, 'Attachment should be new record'
+    refute attachments.last.new_record?, "Attachment shouldn't be new record"
+  end
+
+  test '.new replaces AttachmentData on each Attachment if file specified' do
+    edition = create(:news_article, :with_attachment)
+    existing_filename = edition.attachments.first.filename
+    attachment_params = {
+      attachments_attributes: {
+        '0' => {
+          attachment_data_attributes: { file: fixture_file(existing_filename) }
+        }
+      }
+    }
+    attachment = BulkUpload.new(edition, attachment_params).attachments.first
+    assert attachment.attachment_data.new_record?, 'AttachmentData should be new record'
   end
 
   test '#save_attachments_to_edition saves attachments to the edition' do
@@ -60,7 +73,7 @@ class BulkUploadTest < ActiveSupport::TestCase
     end
   end
 
-  test '#save_attachments_to_edition does not save attachments if they are invalid' do
+  test '#save_attachments_to_edition does not save any attachments if one is invalid' do
     edition = create(:news_article)
     bulk_upload = BulkUpload.new(edition, invalid_attachment_params)
     assert_no_difference('edition.attachments.count') do
