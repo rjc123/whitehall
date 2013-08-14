@@ -14,6 +14,7 @@ class Publication < Publicationesque
   validates :publication_date, recent_date: true, unless: ->(edition) { edition.can_have_some_invalid_data? }
   validates :publication_type_id, presence: true
   validate :only_publications_allowed_invalid_data_can_be_awaiting_type
+  validate :has_attachment_or_html
 
   after_update { |p| p.published_related_policies.each(&:update_published_related_publication_count) }
 
@@ -99,5 +100,10 @@ class Publication < Publicationesque
     unless self.can_have_some_invalid_data?
       errors.add(:publication_type, 'must be changed') if PublicationType.migration.include?(self.publication_type)
     end
+  end
+
+  def has_attachment_or_html
+    return if self.can_have_some_invalid_data?
+    errors.add(:base, "Attachment or Html version required") if !attachments.any? and !html_version
   end
 end
