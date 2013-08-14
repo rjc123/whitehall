@@ -72,6 +72,31 @@ class BulkUploadTest < ActiveSupport::TestCase
       assert bulk_upload.save_attachments_to_edition, 'should return true'
     end
   end
+  
+  test '#save_attachments_to_edition updates existing attachments' do
+    edition = create(:news_article, :with_attachment)
+    existing_filename = edition.attachments.first.filename
+    new_title = 'New title for existing attachment'
+    attachment_params = {
+      attachments_attributes: {
+        '0' => {
+          title: new_title,
+          attachment_data_attributes: { file: fixture_file(existing_filename) }
+        }
+      }
+    }
+    bulk_upload = BulkUpload.new(edition, attachment_params)
+    bulk_upload.save_attachments_to_edition
+    assert_equal 1, edition.attachments.length
+    assert_equal new_title, edition.attachments.first.title
+  end
+
+  # test '#save_attachments_to_edition replaces existing files' do
+    # skip 'copy setup from previous test, then refactor'
+    # assert_not_nil edition.attachments.first.attachment_data
+    # assert_not_equal existing_attachment_data, edition.attachments.first.attachment_data
+    # existing_attachment_data = edition.attachments.first.attachment_data
+  # end
 
   test '#save_attachments_to_edition does not save any attachments if one is invalid' do
     edition = create(:news_article)

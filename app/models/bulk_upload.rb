@@ -37,7 +37,11 @@ class BulkUpload
   def save_attachments_to_edition
     if valid?
       attachments.each do |attachment|
-        EditionAttachment.create!(edition: @edition, attachment: attachment)
+        if attachment.new_record?
+          EditionAttachment.create!(edition: @edition, attachment: attachment)
+        else
+          attachment.save!
+        end
       end
     else
       false
@@ -56,10 +60,18 @@ class BulkUpload
 
   private
 
+  def mutable_attachment_with_file(basename)
+    # The attachment is read only as it was found by the with_filename
+    # scope, which uses `joins`, which marks everything it returns as
+    # read only.
+    read_only_instance = @edition.attachments.with_filename(basename).first
+    Attachment.find(read_only_instance.id)
+  end
+
   def existing_attachment_with_new_data(data_attributes)
     attachment = nil
     if file = data_attributes[:file]
-      attachment = @edition.attachments.with_filename(File.basename(file)).first
+      attachment = mutable_attachment_with_file(File.basename(file))
       if attachment
         data_attributes.merge!(to_replace_id: attachment.attachment_data.id)
         attachment.attachment_data = AttachmentData.new(data_attributes)

@@ -20,7 +20,7 @@ class Admin::BulkUploadsControllerTest < ActionController::TestCase
     fixture_file = fixture_file_upload('two-pages-and-greenpaper.zip')
     zip_file = BulkUpload::ZipFile.new(fixture_file)
     bulk_upload = BulkUpload.from_files(@edition, zip_file.extracted_file_paths)
-    params = { attachment_attributes: {} }
+    params = { attachments_attributes: {} }
     bulk_upload.attachments.each_with_index do |attachment, i|
       params[:attachments_attributes][i] = params_for_attachment(attachment, i + 1)
     end
