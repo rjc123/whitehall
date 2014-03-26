@@ -4,6 +4,8 @@
   <section>
     <h1>New import</h1>
 
+    <%= govspeak_to_html "**Alert:** Notify the infrastructure and publishing teams before big imports; they may cause performance issues with day-to-day publishing. " %>
+
     <%= form_for [:admin, @import] do |import_form| %>
       <%= import_form.errors %>
 
